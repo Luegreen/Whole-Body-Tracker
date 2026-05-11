@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Whole Body Workout Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0f0f13;
+  --surface: #17171f;
+  --surface2: #1e1e28;
+  --border: #2a2a38;
+  --border2: #333345;
+  --text: #f0f0f5;
+  --muted: #7a7a9a;
+  --d1: #a78bfa;
+  --d1-bg: rgba(167,139,250,0.1);
+  --d2: #f7814f;
+  --d2-bg: rgba(247,129,79,0.1);
+  --d3: #4f8ef7;
+  --d3-bg: rgba(79,142,247,0.1);
+  --d4: #4fc9a4;
+  --d4-bg: rgba(79,201,164,0.1);
+  --check: #22c55e;
+  --check-bg: rgba(34,197,94,0.12);
+  --gold: #f5c842;
+}
+
+body { font-family: 'Instrument Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+/* HEADER */
+header {
+  padding: 2.5rem 2rem 2rem;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, #13131a 0%, var(--bg) 100%);
+}
+
+header h1 {
+  font-family: 'Syne', sans-serif;
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  background: linear-gradient(135deg, #fff 30%, var(--muted));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+header p { color: var(--muted); font-size: 0.82rem; margin-top: 0.3rem; }
+
+.header-stats { display: flex; gap: 1.5rem; margin-top: 1.25rem; flex-wrap: wrap; }
+
+.hstat { font-size: 0.75rem; color: var(--muted); font-weight: 500; }
+.hstat strong {
+  font-family: 'Syne', sans-serif;
+  font-size: 1.2rem; font-weight: 700;
+  color: var(--text); display: block;
+  line-height: 1; margin-bottom: 2px;
+}
+
+/* LEGEND */
+.legend-bar {
+  padding: 0.6rem 2rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex; gap: 1.5rem; flex-wrap: wrap;
+  font-size: 0.72rem; color: var(--muted);
+}
+
+.legend-item { display: flex; align-items: center; gap: 5px; }
+.legend-dot { width: 8px; height: 8px; border-radius: 2px; }
+
+/* DAY TABS */
+.day-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 50;
+  background: var(--bg);
+}
+
+.day-tab {
+  padding: 0.85rem 0.5rem;
+  display: flex; flex-direction: column;
+  align-items: center; gap: 0.2rem;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.day-tab:not(:last-child) { border-right: 1px solid var(--border); }
+
+.tab-label {
+  font-family: 'Syne', sans-serif;
+  font-size: 0.6rem; font-weight: 700;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--muted); transition: color 0.2s;
+}
+
+.tab-name { font-size: 0.78rem; font-weight: 600; color: var(--text); text-align: center; line-height: 1.2; }
+.tab-count { font-size: 0.62rem; color: var(--muted); }
+
+.day-tab.active-d1 { border-bottom-color: var(--d1); background: var(--d1-bg); }
+.day-tab.active-d1 .tab-label { color: var(--d1); }
+.day-tab.active-d2 { border-bottom-color: var(--d2); background: var(--d2-bg); }
+.day-tab.active-d2 .tab-label { color: var(--d2); }
+.day-tab.active-d3 { border-bottom-color: var(--d3); background: var(--d3-bg); }
+.day-tab.active-d3 .tab-label { color: var(--d3); }
+.day-tab.active-d4 { border-bottom-color: var(--d4); background: var(--d4-bg); }
+.day-tab.active-d4 .tab-label { color: var(--d4); }
+
+.tab-done-badge {
+  position: absolute; top: 6px; right: 6px;
+  width: 16px; height: 16px;
+  background: var(--check); border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity 0.2s;
+}
+.tab-done-badge.visible { opacity: 1; }
+.tab-done-badge svg { width: 9px; height: 9px; stroke: white; stroke-width: 2.5; fill: none; }
+
+/* MAIN */
+main { padding: 1.5rem; max-width: 860px; margin: 0 auto; }
+
+.day-panel { display: none; }
+.day-panel.active { display: block; }
+
+/* NOTES */
+.notes-banner {
+  border-radius: 10px; padding: 0.9rem 1.1rem;
+  margin-bottom: 1.5rem; font-size: 0.8rem;
+  line-height: 1.55; border: 1px solid;
+}
+.notes-banner strong {
+  display: block; font-size: 0.68rem;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  margin-bottom: 0.3rem; opacity: 0.7;
+}
+.notes-d1 { background: var(--d1-bg); border-color: rgba(167,139,250,0.2); color: #c4b5fd; }
+.notes-d2 { background: var(--d2-bg); border-color: rgba(247,129,79,0.2); color: #ffbfa0; }
+.notes-d3 { background: var(--d3-bg); border-color: rgba(79,142,247,0.2); color: #a0beff; }
+.notes-d4 { background: var(--d4-bg); border-color: rgba(79,201,164,0.2); color: #a0f5d8; }
+
+/* SESSION CONTROLS */
+.session-controls {
+  display: flex; align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;
+}
+
+.session-controls h2 {
+  font-family: 'Syne', sans-serif;
+  font-size: 0.85rem; font-weight: 700;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--muted);
+}
+
+.btn-log {
+  font-family: 'Instrument Sans', sans-serif;
+  font-size: 0.78rem; font-weight: 600;
+  padding: 0.4rem 1rem; border-radius: 6px;
+  border: none; cursor: pointer; transition: all 0.15s;
+}
+.btn-log-d1 { background: var(--d1); color: #000; }
+.btn-log-d2 { background: var(--d2); color: #000; }
+.btn-log-d3 { background: var(--d3); color: #000; }
+.btn-log-d4 { background: var(--d4); color: #000; }
+.btn-log:hover { opacity: 0.85; transform: translateY(-1px); }
+
+/* SECTION LABEL */
+.section-label {
+  font-family: 'Syne', sans-serif;
+  font-size: 0.65rem; font-weight: 700;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--muted); padding: 0.75rem 0 0.4rem;
+  border-bottom: 1px solid var(--border); margin-bottom: 0.25rem;
+}
+
+/* TABLE */
+.ex-table { width: 100%; border-collapse: collapse; margin-bottom: 0.5rem; }
+
+.ex-table thead th {
+  font-size: 0.62rem; font-weight: 600;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--muted); padding: 0.4rem 0.5rem;
+  text-align: left; border-bottom: 1px solid var(--border);
+}
+.ex-table thead th:not(:first-child) { text-align: center; }
+
+.ex-row { border-bottom: 1px solid var(--border); transition: background 0.12s; }
+.ex-row:hover { background: var(--surface); }
+.ex-row.completed { background: var(--check-bg); }
+
+.ex-row td { padding: 0.55rem 0.5rem; vertical-align: middle; }
+.ex-name { font-size: 0.875rem; font-weight: 500; color: var(--text); min-width: 150px; }
+
+.field-cell { text-align: center; }
+
+.editable-field {
+  font-family: 'Syne', sans-serif;
+  font-size: 0.8rem; font-weight: 600;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px; color: var(--text);
+  padding: 0.3rem 0.4rem;
+  width: 82px; text-align: center;
+  transition: border-color 0.15s, background 0.15s;
+  cursor: pointer;
+}
+.editable-field:focus { outline: none; border-color: var(--d3); background: var(--surface); }
+.editable-field.changed { border-color: var(--gold); color: var(--gold); }
+
+/* EFFORT FIELD (Group Class) */
+.effort-field {
+  font-family: 'Syne', sans-serif;
+  font-size: 1rem; font-weight: 700;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px; color: var(--gold);
+  padding: 0.3rem 0.4rem;
+  width: 60px; text-align: center;
+  transition: border-color 0.15s;
+}
+.effort-field:focus { outline: none; border-color: var(--d1); }
+
+.check-btn {
+  width: 28px; height: 28px; border-radius: 7px;
+  border: 2px solid var(--border2);
+  background: transparent; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto; transition: all 0.15s;
+}
+.check-btn:hover { border-color: var(--check); transform: scale(1.08); }
+.check-btn.done { background: var(--check); border-color: var(--check); }
+.check-btn svg { width: 14px; height: 14px; stroke: white; stroke-width: 2.5; fill: none; stroke-linecap: round; stroke-linejoin: round; opacity: 0; transition: opacity 0.12s; }
+.check-btn.done svg { opacity: 1; }
+
+/* GROUP CLASS SPECIAL */
+.class-input {
+  font-family: 'Instrument Sans', sans-serif;
+  font-size: 0.82rem; font-weight: 500;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 6px; color: var(--text);
+  padding: 0.3rem 0.5rem; width: 100%;
+  transition: border-color 0.15s;
+}
+.class-input:focus { outline: none; border-color: var(--d1); }
+.class-input.wide { width: 180px; }
+.class-input.med { width: 100px; }
+.class-input.narrow { width: 60px; }
+
+.add-class-btn {
+  font-family: 'Instrument Sans', sans-serif;
+  font-size: 0.78rem; font-weight: 600;
+  padding: 0.5rem 1.1rem; border-radius: 6px;
+  border: 1px dashed var(--border2);
+  background: transparent; color: var(--muted);
+  cursor: pointer; width: 100%; margin-top: 0.5rem;
+  transition: all 0.15s;
+}
+.add-class-btn:hover { border-color: var(--d1); color: var(--d1); }
+
+.del-row-btn {
+  background: none; border: none;
+  color: var(--muted); cursor: pointer;
+  font-size: 0.75rem; padding: 2px 5px;
+  border-radius: 4px; transition: color 0.15s;
+}
+.del-row-btn:hover { color: #ef4444; }
+
+/* HISTORY */
+.history-section { margin-top: 2rem; }
+.history-section h3 {
+  font-family: 'Syne', sans-serif;
+  font-size: 0.65rem; font-weight: 700;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--muted); padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--border); margin-bottom: 0.75rem;
+}
+.history-empty { font-size: 0.8rem; color: var(--muted); font-style: italic; padding: 0.5rem 0; }
+.history-entry {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 0.75rem 1rem;
+  margin-bottom: 0.5rem; font-size: 0.78rem;
+}
+.history-entry-header {
+  display: flex; justify-content: space-between;
+  align-items: center; margin-bottom: 0.4rem;
+}
+.history-date { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.78rem; color: var(--text); }
+.history-del {
+  background: none; border: none; color: var(--muted);
+  cursor: pointer; font-size: 0.75rem; padding: 2px 6px;
+  border-radius: 4px; font-family: inherit; transition: color 0.15s;
+}
+.history-del:hover { color: #ef4444; }
+.history-changes { color: var(--muted); line-height: 1.7; }
+.history-changes span.changed-val { color: var(--gold); font-weight: 600; }
+
+@media (max-width: 620px) {
+  header { padding: 1.5rem 1rem 1.25rem; }
+  header h1 { font-size: 1.4rem; }
+  main { padding: 1rem; }
+  .editable-field { width: 65px; font-size: 0.72rem; }
+  .ex-name { font-size: 0.78rem; min-width: 110px; }
+  .day-tabs { grid-template-columns: repeat(4,1fr); }
+  .tab-name { font-size: 0.68rem; }
+  .legend-bar { padding: 0.6rem 1rem; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Whole Body Workout Tracker</h1>
+  <p>Log classes, track weights & reps — all changes saved automatically</p>
+  <div class="header-stats">
+    <div class="hstat"><strong id="hs-sessions">0</strong>total sessions</div>
+    <div class="hstat"><strong id="hs-d1">0</strong>group classes</div>
+    <div class="hstat"><strong id="hs-d2">0</strong>machine days</div>
+    <div class="hstat"><strong id="hs-d3">0</strong>free weight days</div>
+    <div class="hstat"><strong id="hs-d4">0</strong>ankle days</div>
+  </div>
+</header>
+
+<div class="legend-bar">
+  <div class="legend-item"><div class="legend-dot" style="background:#f5c842"></div>Value changed from default</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#22c55e"></div>Exercise complete</div>
+  <div class="legend-item"><span>M = Machine &nbsp;·&nbsp; DB = Dumbbell &nbsp;·&nbsp; L/R = Left &amp; Right &nbsp;·&nbsp; RDL = Romanian Deadlift</span></div>
+</div>
+
+<div class="day-tabs">
+  <div class="day-tab active-d1" id="tab-d1" onclick="switchDay(1)">
+    <div class="tab-label">Group</div>
+    <div class="tab-name">Class Day</div>
+    <div class="tab-count" id="tab-d1-count">0 logged</div>
+    <div class="tab-done-badge" id="badge-d1"><svg viewBox="0 0 16 16"><polyline points="2.5,8.5 6.5,12.5 13.5,4.5"/></svg></div>
+  </div>
+  <div class="day-tab" id="tab-d2" onclick="switchDay(2)">
+    <div class="tab-label">Machine</div>
+    <div class="tab-name">Resistance Day</div>
+    <div class="tab-count" id="tab-d2-count">0 / 4 done</div>
+    <div class="tab-done-badge" id="badge-d2"><svg viewBox="0 0 16 16"><polyline points="2.5,8.5 6.5,12.5 13.5,4.5"/></svg></div>
+  </div>
+  <div class="day-tab" id="tab-d3" onclick="switchDay(3)">
+    <div class="tab-label">Free Weight</div>
+    <div class="tab-name">Resistance Day</div>
+    <div class="tab-count" id="tab-d3-count">0 / 4 done</div>
+    <div class="tab-done-badge" id="badge-d3"><svg viewBox="0 0 16 16"><polyline points="2.5,8.5 6.5,12.5 13.5,4.5"/></svg></div>
+  </div>
+  <div class="day-tab" id="tab-d4" onclick="switchDay(4)">
+    <div class="tab-label">Foot &amp; Ankle</div>
+    <div class="tab-name">Strength</div>
+    <div class="tab-count" id="tab-d4-count">0 / 9 done</div>
+    <div class="tab-done-badge" id="badge-d4"><svg viewBox="0 0 16 16"><polyline points="2.5,8.5 6.5,12.5 13.5,4.5"/></svg></div>
+  </div>
+</div>
+
+<main>
+
+<!-- ═══ DAY 1: GROUP CLASS ═══ -->
+<div class="day-panel active" id="panel-d1">
+  <div class="notes-banner notes-d1">
+    <strong>Day Notes</strong>
+    Day 1 is focused on group fitness classes. Since classes vary in structure and difficulty, gauge how hard you pushed yourself during each class to understand if you are making gains!
+  </div>
+
+  <div class="session-controls">
+    <h2>Classes</h2>
+    <button class="btn-log btn-log-d1" onclick="logSession(1)">+ Log This Session</button>
+  </div>
+
+  <div class="section-label">Class Log</div>
+  <table class="ex-table" id="table-d1">
+    <thead>
+      <tr>
+        <th style="min-width:160px">Class Name</th>
+        <th>Date</th>
+        <th>Length</th>
+        <th>Effort (1–10)</th>
+        <th>Done</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="class-rows">
+      <tr class="ex-row" data-day="1" data-idx="0">
+        <td><input class="class-input wide" placeholder="e.g. Spin, Yoga, HIIT…" /></td>
+        <td><input class="class-input med" type="date" /></td>
+        <td><input class="class-input narrow" placeholder="45 min" /></td>
+        <td class="field-cell"><input class="effort-field" type="number" min="1" max="10" placeholder="—" /></td>
+        <td class="field-cell"><button class="check-btn" onclick="toggleEx(this)"><svg viewBox="0 0 16 16"><polyline points="2.5,8.5 6.5,12.5 13.5,4.5"/></svg></button></td>
+        <td><button class="del-row-btn" onclick="deleteClassRow(this)" title="Remove row">✕</button></td>
+      </tr>
+    </tbody>
+  </table>
+  <button class="add-class-btn" onclick="addClassRow()">+ Add Another Class</button>
+
+  <div class="history-section">
+    <h3>Session History — Group Class Day</h3>
+    <div id="history-d1"><div class="history-empty">No sessions logged yet.</div></div>
+  </div>
+</div>
+
+<!-- ═══ DAY 2: MACHINE RESISTANCE ═══ -->
+<div class="day-panel" id="panel-d2">
+  <div class="notes-banner notes-d2">
+    <strong>Day Notes</strong>
+    Day 2 is focused on general musculoskeletal health utilizing machine-based resistance training. Complete a 2-minute warm-up: arm circles, arm swings, side bends, leg swings front-to-back, leg swings side-to-side, open and close hip gates. Do a warm-up set for each exercise before going to working weight.
+  </div>
+
+  <div class="session-controls">
+    <h2>Exercises</h2>
+    <button class="btn-log btn-log-d2" onclick="logSession(2)">+ Log This Session</button>
+  </div>
+
+  <div class="section-label">Strength / Core</div>
+  <table class="ex-table" id="table-d2">
+    <thead>
+      <tr>
+        <th>Exercise</th>
+        <th>Weight</th>
+        <th>Reps</th>
+        <th>Sets</th>
+        <th>Done</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr class="ex-row" data-day="2" data-idx="0">
+        <td class="ex-name">Seated Row (M)</td>
+        <td class="field-cell"><input class="editable-field" data-field="wt" value="55" /></td>
+        <td class="field-cell"><input class="editable-field" data-field="rep" value="8 to 12" /></td>
+        <td class="field-cell"><input class="editable-field" data-field="set" value="3" /></td>
+        <td class="field-cell"><button class="check-btn" onclick="toggleEx(this)"><svg viewBox="0 0 16 16"><polyline points="2.5,8.5 6.5,12.5 13.5,4.5"/></svg></button></td>
+      </tr>
+      <tr class="ex-row" data-day="2" data-idx="1">
+        <td class="ex-name">Chest Press (M)</td>
+        <td class="field-cell"><input class="editable-field" data-field="wt" value="70 / 60 / 50" /></td>
+        <td class="field-cell"><input class="editable-field" data-field="rep" value="8 to 12" /></td>
+        <td class="field-cell"><input class="editable-field" data-field="set" value="3" /></td>
+        <td class="field-cell"><button class="check-btn" onclick="toggleEx(this)"><svg viewBox="0 0 16 16"><polyline points="2.5,8.5 6.5,12.5 13.5,4.5"/></svg></button></td>
+      </tr>
+      <tr class="ex-row" data-day="2" data-idx="2">
+        <td class="ex-name">Leg Press (M)</td>
+        <td class="field-cell"><input class="editable-field" data-field="wt" value="100/120/120" /></td>
+        <td class="field-cell"><input class="editable-field" data-field="rep" value="8 to 12" /></td>
+        <td class="field-cell"><input class="editable-field" data-field="set" value="3" /></td>
+        <td class="field-cell"><button class="check-btn" onclick="toggleEx(this)"><svg viewBox="0 0 16 16"><polyline points="2.5,8.5 6.5,12.5 13.5,4.5"/></svg></button></td>
+      </tr>
+      <tr class="ex-row" data-day="2" data-idx="3">
+        <td class="ex-name">Lat Pulldown (M)</td>
+        <td class="field-cell"><input class="editable-field" data-field="wt" value="—" /></td>
+        <td class="field-cell"><input class="editable-field" data-field="rep" value="8 to 12" /></td>
+        <td class="field-cell"><input class="editable-field" data-field="set" value="3" /></td>
+        <td class="field-cell"><button class="check-btn" onclick="toggleEx(this)"><svg viewBox="0 0 16 16"><polyline points="2.5,8.5 6.5,12.5 13.5,4.5"/></svg></button></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="section-label" style="margin-top:1.25rem; color: var(--muted); opacity:0.75;">Optional Machines — add any that fit your session</div>
+  <table class="ex-table" id="table-d2-opt">
+    <thead>
+      <tr>
+        <th>Exercise</th>
+        <th>Weight</th>
+        <th>Reps</th>
+        <th>Sets</th>
+        <th>Done</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr class="ex-row optional-row" data-day="2" data-idx="4">
+        <td class="ex-name" style="color:var(--muted)">Leg Extension (M)</td>
+        <td class="field-cell"><input class="editable-field" data-field="wt" value="seat 3, 60lbs" /></td>
+        <td class="field-cell"><input class="editable-field" data-field="rep" value="10" /></td>
+        <td class="field-cell"><input class="editable-field" data-field="set" value="2" /></td>
+        <td class="field-cell"><button class="check-btn" onclick="toggleEx(this)"><svg viewBox="0 0 16 16"><polyline points="2.5,8.5 6.5,12.5 13.5,4.5"/></svg></button></td>
+      </tr>
+      <tr class="ex-row optional-row" data-day="2" data-idx="5">
+        <td class="ex-name" style="color:var(--muted)">Leg Curl (M)</td>
+        <td class="field-cell"><input class="editable-field" data-field="wt" value="seat 3, 70lbs" /></td>
+        <td class="field-cell"><input class="editable-field" data-field="rep" value="10" /></td>
+        <td class="field-cell"><input class="editable-field" data-field="set" value="2" /></td>
+        <td class="field-cell"><button class="check-btn" onclick="toggleEx(this)"><svg viewBox="0 0 16 16"><polyline points="2.5,8.5 6.5,12.5 13.5,4.5"/></svg></button></td>
+      </tr>
+      <tr class="ex-row optional-row" data-day="2" data-idx="6">
+        <td class="ex-name" style="color:var(--muted)">Tricep Push Down (M)</td>
+        <td class="field-cell"><input class="editable-field" data-field="wt" value="17.5lbs" /></td>
+        <td class="field-cell"><input class="editable-field" data-field="rep" value="10" /></td>
+        <td class="field-cell"><input class="editable-field" data-field="set" value="2" /></td>
+        <td class="field-cell"><button class="check-btn" onclick="toggleEx(this)"><svg viewBox="0 0 16 16"><polyline points="2.5,8.5 6.5,12.5 13.5,4.5"/></svg></button></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="history-section">
+    <h3>Session History — Machine Day</h3>
+    <div id="history-d2"><div class="history-empty">No sessions logged yet.</div></div>
+  </div>
+</div>
+
+<!-- ═══ DAY 3: FREE WEIGHT RESISTANCE ═══ -->
+<div class="day-panel" id="panel-d3">
+  <div class="notes-banner notes-d3">
+    <strong>Day Notes</strong>
+    Day 3 is focused on general musculoskeletal health utilizing free weight-based resistance training. Complete a 2-minute warm-up: arm circles, arm swings, side bends, leg swings front-to-back, leg swings side-to-side, open and close hip gates. Do a warm-up set for each exercise before going to working weight.
+  </div>
+
+  <div class="session-controls">
+    <h2>Exercises</h2>
+    <button class="btn-log btn-log-d3" onclick="logSession(3)">+ Log This Session</button>
+  </div>
+
+  <div class="section-label">Strength / Core</div>
+  <table class="ex-table" id="table-d3">
+    <thead>
+      <tr>
+        <th>Exercise</th>
+        <th>Weight</th>
+        <th>Reps</th>
+        <th>Sets</th>
+        <th>Done</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr class="ex-row" data-day="3" data-idx="0">
+        <td class="ex-name">DB Rows</td>
+        <td class="field-cell"><input class="editable-field" data-field="wt" value="—" /></td>
+        <td class="field-cell"><input class="editable-field" data-field="rep" value="8 to 12" /></td>
+        <td class="field-cell"><input class="editable-field" data-field="set" value="3" /></td>
+        <td class="field-cell"><button class="check-btn" onclick="toggleEx(this)"><svg viewBox="0 0 16 16"><polyline points="2.5,8.5 6.5,12.5 13.5,4.5"/></svg></button></td>
+      </tr>
+      <tr class="ex-row" data-day="3" data-idx="1">
+        <td class="ex-name">DB Incline Bench Press</td>
+        <td class="field-cell"><input class="editable-field" data-field="wt" value="—" /></td>
+        <td class="field-cell"><input class="editable-field" data-field="rep" value="8 to 12" /></td>
+        <td class="field-cell"><input class="editable-field" data-field="set" value="3" /></td>
+        <td class="field-cell"><button class="check-btn" onclick="toggleEx(this)"><svg viewBox="0 0 16 16"><polyline points="2.5,8.5 6.5,12.5 13.5,4.5"/></svg></button></td>
+      </tr>
+      <tr class="ex-row" data-day="3" data-idx="2">
+        <td class="ex-name">DB Lunges</td>
+        <td class="field-cell"><input class="editable-field" data-field="wt" value="—" /></td>
+        <td class="field-cell"><input class="editable-field" data-field="rep" value="8 to 12 L/R" /></td>
+        <td class="field-cell"><input class="editable-field" data-field="set" value="3" /></td>
+        <td class="field-cell"><button class="check-btn" onclick="toggleEx(this)"><svg viewBox="0 0 16 16"><polyline points="2.5,8.5 6.5,12.5 13.5,4.5"/></svg></button></td>
+      </tr>
+      <tr class="ex-row" data-day="3" data-idx="3">
+        <td class="ex-name">DB Mid Trap Row</td>
+        <td class="field-cell"><input class="editable-field" data-field="wt" value="—" /></td>
+        <td class="field-cell"><input class="editable-field" data-field="rep" value="8 to 12" /></td>
+        <td class="field-cell"><input class="editable-field" data-field="set" value="3" /></td>
+        <td class="field-cell"><button class="check-btn" onclick="toggleEx(this)"><svg viewBox="0 0 16 16"><polyline points="2.5,8.5 6.5,12.5 13.5,4.5"/></svg></button></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="history-section">
+    <h3>Session History — Free Weight Day</h3>
+    <div id="history-d3"><div class="history-empty">No sessions logged yet.</div></div>
+  </div>
+</div>
+
+<!-- ═══ DAY 4: FOOT & ANKLE ═══ -->
+<div class="day-panel" id="panel-d4">
+  <div class="notes-banner notes-d4">
+    <strong>Day Notes</strong>
+    Perform all exercises below for 10 reps or 10–20 seconds per set for 2 sets. Build from this starting point by adding more sets. Warm-up: Ankle Circles, Feet Towel Curls, Toe Spaced Adduction.
+  </div>
+
+  <div class="session-controls">
+    <h2>Exercises</h2>
+    <button class="btn-log btn-log-d4" onclick="logSession(4)">+ Log This Session</button>
+  </div>
+
+  <div class="section-label">Strength</div>
+  <table class="ex-table" id="table-d4">
+    <thead>
+      <tr>
+        <th>Exercise</th>
+        <th>Weight</th>
+        <th>Reps / Hold</th>
+        <th>Sets</th>
+        <th>Done</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr class="ex-row" data-day="4" data-idx="0">
+        <td class="ex-name">Calf Raises</td>
+        <td class="field-cell"><input class="editable-field" data-field="wt" value="BW" /></td>
+        <td class="field-cell"><input class="editable-field" data-field="rep" value="10" /></td>
+        <td class="field-cell"><input class="editable-field" data-field="set" value="2" /></td>
+        <td class="field-cell"><button class="check-btn" onclick="toggleEx(this)"><svg viewBox="0 0 16 16"><polyline points="2.5,8.5 6.5,12.5 13.5,4.5"/></svg></button></td>
+      </tr>
+      <tr class="ex-row" data-day="4" data-idx="1">
+        <td class="ex-name">Toe Elevated Planted Arch Lift Hold</td>
+        <td class="field-cell"><input class="editable-field" data-field="wt" value="BW" /></td>
+        <td class="field-cell"><input class="editable-field" data-field="rep" value="20 sec" /></td>
+        <td class="field-cell"><input class="editable-field" data-field="set" value="2" /></td>
+        <td class="field-cell"><button class="check-btn" onclick="toggleEx(this)"><svg viewBox="0 0 16 16"><polyline points="2.5,8.5 6.5,12.5 13.5,4.5"/></svg></button></td>
+      </tr>
+      <tr class="ex-row" data-day="4" data-idx="2">
+        <td class="ex-name">Resistance Band Big Toe Flexion</td>
+        <td class="field-cell"><input class="editable-field" data-field="wt" value="Band" /></td>
+        <td class="field-cell"><input class="editable-field" data-field="rep" value="10" /></td>
+        <td class="field-cell"><input class="editable-field" data-field="set" value="2" /></td>
+        <td class="field-cell"><button class="check-btn" onclick="toggleEx(this)"><svg viewBox="0 0 16 16"><polyline points="2.5,8.5 6.5,12.5 13.5,4.5"/></svg></button></td>
+      </tr>
+      <tr class="ex-row" data-day="4" data-idx="3">
+        <td class="ex-name">Banded Ankle Dorsi Flexion</td>
+        <td class="field-cell"><input class="editable-field" data-field="wt" value="Band" /></td>
+        <td class="field-cell"><input class="editable-field" data-field="rep" value="10" /></td>
+        <td class="field-cell"><input class="editable-field" data-field="set" value="2" /></td>
+        <td class="field-cell"><button class="check-btn" onclick="toggleEx(this)"><svg viewBox="0 0 16 16"><polyline points="2.5,8.5 6.5,12.5 13.5,4.5"/></svg></button></td>
+      </tr>
+      <tr class="ex-row" data-day="4" data-idx="4">
+        <td class="ex-name">Banded Ankle Inversion</td>
+        <td class="field-cell"><input class="editable-field" data-field="wt" value="Band" /></td>
+        <td class="field-cell"><input class="editable-field" data-field="rep" value="10" /></td>
+        <td class="field-cell"><input class="editable-field" data-field="set" value="2" /></td>
+        <td class="field-cell"><button class="check-btn" onclick="toggleEx(this)"><svg viewBox="0 0 16 16"><polyline points="2.5,8.5 6.5,12.5 13.5,4.5"/></svg></button></td>
+      </tr>
+      <tr class="ex-row" data-day="4" data-idx="5">
+        <td class="ex-name">Banded Ankle Eversion</td>
+        <td class="field-cell"><input class="editable-field" data-field="wt" value="Band" /></td>
+        <td class="field-cell"><input class="editable-field" data-field="rep" value="10" /></td>
+        <td class="field-cell"><input class="editable-field" data-field="set" value="2" /></td>
+        <td class="field-cell"><button class="check-btn" onclick="toggleEx(this)"><svg viewBox="0 0 16 16"><polyline points="2.5,8.5 6.5,12.5 13.5,4.5"/></svg></button></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="section-label">Flexibility</div>
+  <table class="ex-table" id="table-d4-flex">
+    <thead>
+      <tr>
+        <th>Exercise</th>
+        <th>Weight</th>
+        <th>Hold</th>
+        <th>Sets</th>
+        <th>Done</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr class="ex-row" data-day="4" data-idx="6">
+        <td class="ex-name">Knees Over Toes Stretch</td>
+        <td class="field-cell"><input class="editable-field" data-field="wt" value="BW" /></td>
+        <td class="field-cell"><input class="editable-field" data-field="rep" value="20s L/R" /></td>
+        <td class="field-cell"><input class="editable-field" data-field="set" value="2" /></td>
+        <td class="field-cell"><button class="check-btn" onclick="toggleEx(this)"><svg viewBox="0 0 16 16"><polyline points="2.5,8.5 6.5,12.5 13.5,4.5"/></svg></button></td>
+      </tr>
+      <tr class="ex-row" data-day="4" data-idx="7">
+        <td class="ex-name">Front of Ankle Stretch</td>
+        <td class="field-cell"><input class="editable-field" data-field="wt" value="BW" /></td>
+        <td class="field-cell"><input class="editable-field" data-field="rep" value="20s L/R" /></td>
+        <td class="field-cell"><input class="editable-field" data-field="set" value="2" /></td>
+        <td class="field-cell"><button class="check-btn" onclick="toggleEx(this)"><svg viewBox="0 0 16 16"><polyline points="2.5,8.5 6.5,12.5 13.5,4.5"/></svg></button></td>
+      </tr>
+      <tr class="ex-row" data-day="4" data-idx="8">
+        <td class="ex-name">Wall Calf Stretch</td>
+        <td class="field-cell"><input class="editable-field" data-field="wt" value="BW" /></td>
+        <td class="field-cell"><input class="editable-field" data-field="rep" value="20s L/R" /></td>
+        <td class="field-cell"><input class="editable-field" data-field="set" value="2" /></td>
+        <td class="field-cell"><button class="check-btn" onclick="toggleEx(this)"><svg viewBox="0 0 16 16"><polyline points="2.5,8.5 6.5,12.5 13.5,4.5"/></svg></button></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="history-section">
+    <h3>Session History — Foot &amp; Ankle</h3>
+    <div id="history-d4"><div class="history-empty">No sessions logged yet.</div></div>
+  </div>
+</div>
+
+</main>
+
+<script>
+const KEY = 'wbworkout_v2';
+let activeDay = 1;
+
+const DEFAULTS = {
+  2: [
+    {wt:'55', rep:'8 to 12', set:'3'},
+    {wt:'70 / 60 / 50', rep:'8 to 12', set:'3'},
+    {wt:'100/120/120', rep:'8 to 12', set:'3'},
+    {wt:'—', rep:'8 to 12', set:'3'},
+    {wt:'seat 3, 60lbs', rep:'10', set:'2'},
+    {wt:'seat 3, 70lbs', rep:'10', set:'2'},
+    {wt:'17.5lbs', rep:'10', set:'2'},
+  ],
+  3: [
+    {wt:'—', rep:'8 to 12', set:'3'},
+    {wt:'—', rep:'8 to 12', set:'3'},
+    {wt:'—', rep:'8 to 12 L/R', set:'3'},
+    {wt:'—', rep:'8 to 12', set:'3'},
+  ],
+  4: [
+    {wt:'BW', rep:'10', set:'2'},
+    {wt:'BW', rep:'20 sec', set:'2'},
+    {wt:'Band', rep:'10', set:'2'},
+    {wt:'Band', rep:'10', set:'2'},
+    {wt:'Band', rep:'10', set:'2'},
+    {wt:'Band', rep:'10', set:'2'},
+    {wt:'BW', rep:'20s L/R', set:'2'},
+    {wt:'BW', rep:'20s L/R', set:'2'},
+    {wt:'BW', rep:'20s L/R', set:'2'},
+  ]
+};
+
+let appState;
+try { appState = JSON.parse(localStorage.getItem(KEY)) || null; } catch { appState = null; }
+if (!appState) appState = {history:{1:[],2:[],3:[],4:[]}};
+if (!appState.history) appState.history = {1:[],2:[],3:[],4:[]};
+[1,2,3,4].forEach(d => { if (!appState.history[d]) appState.history[d] = []; });
+
+function save() { localStorage.setItem(KEY, JSON.stringify(appState)); }
+
+function switchDay(d) {
+  activeDay = d;
+  [1,2,3,4].forEach(n => {
+    document.getElementById(`panel-d${n}`).classList.toggle('active', n===d);
+    const tab = document.getElementById(`tab-d${n}`);
+    tab.className = 'day-tab';
+    if (n===d) tab.classList.add(`active-d${n}`);
+  });
+}
+
+function toggleEx(btn) {
+  btn.classList.toggle('done');
+  const row = btn.closest('.ex-row');
+  row.classList.toggle('completed', btn.classList.contains('done'));
+  updateTabCounts();
+}
+
+function updateTabCounts() {
+  // Day 1: count checked rows
+  const d1done = document.querySelectorAll('#table-d1 .check-btn.done').length;
+  const d1total = document.querySelectorAll('#table-d1 .check-btn').length;
+  document.getElementById('tab-d1-count').textContent = `${d1done} / ${d1total} done`;
+  document.getElementById('badge-d1').classList.toggle('visible', d1done > 0 && d1done === d1total);
+
+  // Days 2–4
+  [2,3,4].forEach(d => {
+    const tables = document.querySelectorAll(`[id^="table-d${d}"]`);
+    let done = 0, total = 0;
+    tables.forEach(t => {
+      done += t.querySelectorAll('.check-btn.done').length;
+      total += t.querySelectorAll('.check-btn').length;
+    });
+    document.getElementById(`tab-d${d}-count`).textContent = `${done} / ${total} done`;
+    document.getElementById(`badge-d${d}`).classList.toggle('visible', total > 0 && done === total);
+  });
+}
+
+// GROUP CLASS ROWS
+let classRowCount = 1;
+
+function addClassRow() {
+  classRowCount++;
+  const tbody = document.getElementById('class-rows');
+  const tr = document.createElement('tr');
+  tr.className = 'ex-row';
+  tr.dataset.day = '1';
+  tr.dataset.idx = classRowCount;
+  tr.innerHTML = `
+    <td><input class="class-input wide" placeholder="e.g. Spin, Yoga, HIIT…" /></td>
+    <td><input class="class-input med" type="date" /></td>
+    <td><input class="class-input narrow" placeholder="45 min" /></td>
+    <td class="field-cell"><input class="effort-field" type="number" min="1" max="10" placeholder="—" /></td>
+    <td class="field-cell"><button class="check-btn" onclick="toggleEx(this)"><svg viewBox="0 0 16 16"><polyline points="2.5,8.5 6.5,12.5 13.5,4.5"/></svg></button></td>
+    <td><button class="del-row-btn" onclick="deleteClassRow(this)" title="Remove row">✕</button></td>
+  `;
+  tbody.appendChild(tr);
+  updateTabCounts();
+}
+
+function deleteClassRow(btn) {
+  const row = btn.closest('.ex-row');
+  const tbody = document.getElementById('class-rows');
+  if (tbody.querySelectorAll('tr').length > 1) {
+    row.remove();
+  } else {
+    // clear it instead of deleting the last row
+    row.querySelectorAll('input').forEach(i => i.value = '');
+    row.querySelector('.check-btn').classList.remove('done');
+    row.classList.remove('completed');
+  }
+  updateTabCounts();
+}
+
+// LOG SESSION
+function logSession(day) {
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'});
+  const timeStr = now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+
+  let changes = [];
+  let completedCount = 0;
+  let totalCount = 0;
+
+  if (day === 1) {
+    // Group class: capture class data
+    const rows = document.querySelectorAll('#class-rows .ex-row');
+    rows.forEach(row => {
+      const name = row.querySelector('.class-input.wide')?.value || '';
+      const date = row.querySelector('input[type=date]')?.value || '';
+      const len = row.querySelector('.class-input.narrow')?.value || '';
+      const effort = row.querySelector('.effort-field')?.value || '';
+      const done = row.querySelector('.check-btn')?.classList.contains('done');
+      if (name) {
+        changes.push(`<strong>${name}</strong> — ${date || 'no date'}, ${len || '?'}, Effort: <span class="changed-val">${effort || '?'}/10</span>${done ? ' ✓' : ''}`);
+      }
+      if (done) completedCount++;
+      totalCount++;
+    });
+  } else {
+    const tables = document.querySelectorAll(`[id^="table-d${day}"]`);
+    tables.forEach(table => {
+      table.querySelectorAll('.ex-row').forEach((row, i) => {
+        const idx = parseInt(row.dataset.idx);
+        const name = row.querySelector('.ex-name')?.textContent || '';
+        const wt = row.querySelector('[data-field="wt"]')?.value || '';
+        const rep = row.querySelector('[data-field="rep"]')?.value || '';
+        const set = row.querySelector('[data-field="set"]')?.value || '';
+        const done = row.querySelector('.check-btn')?.classList.contains('done');
+        if (done) completedCount++;
+        totalCount++;
+        const def = DEFAULTS[day]?.[idx];
+        if (def) {
+          const diffs = [];
+          if (wt !== def.wt) diffs.push(`Weight: <span class="changed-val">${wt}</span> (was ${def.wt})`);
+          if (rep !== def.rep) diffs.push(`Reps: <span class="changed-val">${rep}</span> (was ${def.rep})`);
+          if (set !== def.set) diffs.push(`Sets: <span class="changed-val">${set}</span> (was ${def.set})`);
+          if (diffs.length) changes.push(`<strong>${name}</strong>: ${diffs.join(', ')}`);
+        }
+      });
+    });
+  }
+
+  appState.history[day].unshift({
+    date: `${dateStr} at ${timeStr}`,
+    completed: completedCount,
+    total: totalCount,
+    changes
+  });
+  save();
+  renderHistory(day);
+  updateHeaderStats();
+
+  const btn = document.querySelector(`#panel-d${day} .btn-log`);
+  const orig = btn.textContent;
+  btn.textContent = '✓ Logged!';
+  btn.style.opacity = '0.7';
+  setTimeout(() => { btn.textContent = orig; btn.style.opacity = '1'; }, 1500);
+}
+
+function renderHistory(day) {
+  const container = document.getElementById(`history-d${day}`);
+  const entries = appState.history[day];
+  if (!entries.length) {
+    container.innerHTML = '<div class="history-empty">No sessions logged yet.</div>';
+    return;
+  }
+  container.innerHTML = entries.map((e, i) => `
+    <div class="history-entry">
+      <div class="history-entry-header">
+        <span class="history-date">${e.date} — ${e.completed}/${e.total} complete</span>
+        <button class="history-del" onclick="deleteSession(${day},${i})">✕ delete</button>
+      </div>
+      <div class="history-changes">
+        ${e.changes.length
+          ? e.changes.map(c => `<div>• ${c}</div>`).join('')
+          : '<span style="opacity:0.5">No changes from defaults</span>'}
+      </div>
+    </div>
+  `).join('');
+}
+
+function deleteSession(day, idx) {
+  if (!confirm('Delete this session log?')) return;
+  appState.history[day].splice(idx, 1);
+  save();
+  renderHistory(day);
+  updateHeaderStats();
+}
+
+function updateHeaderStats() {
+  const total = [1,2,3,4].reduce((s,d) => s + appState.history[d].length, 0);
+  document.getElementById('hs-sessions').textContent = total;
+  document.getElementById('hs-d1').textContent = appState.history[1].length;
+  document.getElementById('hs-d2').textContent = appState.history[2].length;
+  document.getElementById('hs-d3').textContent = appState.history[3].length;
+  document.getElementById('hs-d4').textContent = appState.history[4].length;
+}
+
+// Mark changed fields gold
+document.querySelectorAll('.editable-field').forEach(input => {
+  const row = input.closest('.ex-row');
+  if (!row) return;
+  const day = parseInt(row.dataset.day);
+  const idx = parseInt(row.dataset.idx);
+  const field = input.dataset.field;
+  const def = DEFAULTS[day]?.[idx]?.[field];
+  if (def !== undefined) {
+    input.addEventListener('input', () => {
+      input.classList.toggle('changed', input.value !== def);
+    });
+  }
+});
+
+// Init
+[1,2,3,4].forEach(d => renderHistory(d));
+updateHeaderStats();
+updateTabCounts();
+</script>
+</body>
+</html>
